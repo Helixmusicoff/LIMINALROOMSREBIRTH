@@ -5,8 +5,7 @@ using UnityEngine.UI;
 public class SimpleKinematicController : MonoBehaviour
 {
     [Header("UI - Stamina")]
-    [SerializeField] private Slider staminaSlider;           // Слайдер стамины (Min=0, Max=1)
-    [SerializeField] private Image staminaFillImage;          // Заливка слайдера (для цвета)
+    [SerializeField] private Image staminaFillImage;          // Image с Image Type = Filled
     [SerializeField] private Text staminaText;                // Опционально: текст "75 / 100"
     [SerializeField] private bool hideStaminaWhenFull = true; // Скрывать UI, когда стамина полная
     [SerializeField] private CanvasGroup staminaCanvasGroup;  // Для плавного скрытия/показа
@@ -101,13 +100,7 @@ public class SimpleKinematicController : MonoBehaviour
 
         currentStamina = maxStamina;
 
-        // Инициализация UI стамины
-        if (staminaSlider != null)
-        {
-            staminaSlider.minValue = 0f;
-            staminaSlider.maxValue = 1f;
-            staminaSlider.value = 1f;
-        }
+        // Инициализация UI
         UpdateStaminaUI();
 
         if (lockCursor)
@@ -314,21 +307,20 @@ public class SimpleKinematicController : MonoBehaviour
         UpdateStaminaUI();
     }
 
-    // --- Обновление UI стамины ---
+    // --- Обновление UI стамины через fillAmount ---
     private void UpdateStaminaUI()
     {
-        if (staminaSlider != null)
-            staminaSlider.value = StaminaNormalized; // 0..1
-
-        if (staminaText != null)
-            staminaText.text = $"{Mathf.RoundToInt(currentStamina)} / {Mathf.RoundToInt(maxStamina)}";
-
-        // Цвет заливки: от красного (низ) к зелёному (полная)
         if (staminaFillImage != null)
         {
+            staminaFillImage.fillAmount = StaminaNormalized; // 0..1
+
+            // Цвет заливки: от красного (низ) к зелёному (полная)
             float t = Mathf.InverseLerp(0f, lowStaminaThreshold, StaminaNormalized);
             staminaFillImage.color = Color.Lerp(staminaLowColor, staminaFullColor, t);
         }
+
+        if (staminaText != null)
+            staminaText.text = $"{Mathf.RoundToInt(currentStamina)} / {Mathf.RoundToInt(maxStamina)}";
 
         // Плавное скрытие/показ
         if (staminaCanvasGroup != null && hideStaminaWhenFull)
