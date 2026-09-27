@@ -1,8 +1,22 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(CharacterController))]
 public class SimpleKinematicController : MonoBehaviour
 {
+    [Header("UI - Stamina")]
+    [SerializeField] private Slider staminaSlider;           // Слайдер стамины (Min=0, Max=1)
+    [SerializeField] private Image staminaFillImage;          // Заливка слайдера (для цвета)
+    [SerializeField] private Text staminaText;                // Опционально: текст "75 / 100"
+    [SerializeField] private bool hideStaminaWhenFull = true; // Скрывать UI, когда стамина полная
+    [SerializeField] private CanvasGroup staminaCanvasGroup;  // Для плавного скрытия/показа
+
+    [Header("UI Colors")]
+    [SerializeField] private Color staminaFullColor = Color.green;
+    [SerializeField] private Color staminaLowColor = Color.red;
+    [Range(0f, 1f)]
+    [SerializeField] private float lowStaminaThreshold = 0.25f; // Ниже 25% — красный
+
     [Header("Movement")]
     public float walkSpeed = 5f;
     public float sprintSpeed = 8f;
@@ -87,6 +101,15 @@ public class SimpleKinematicController : MonoBehaviour
 
         currentStamina = maxStamina;
 
+        // Инициализация UI стамины
+        if (staminaSlider != null)
+        {
+            staminaSlider.minValue = 0f;
+            staminaSlider.maxValue = 1f;
+            staminaSlider.value = 1f;
+        }
+        UpdateStaminaUI();
+
         if (lockCursor)
         {
             Cursor.lockState = CursorLockMode.Locked;
@@ -125,7 +148,7 @@ public class SimpleKinematicController : MonoBehaviour
         HandleMouseLook();
         HandleCrouch();
         HandleMovement();   // здесь решается, бежим ли мы
-        HandleStamina();    // тратим/восстанавливаем стамину
+        HandleStamina();    // тратим/восстанавливаем стамину + UI
         HandleJump();
         ApplyGravity();
         MoveController();
@@ -258,7 +281,7 @@ public class SimpleKinematicController : MonoBehaviour
         horizontalVelocity = wishDir * targetSpeed;
     }
 
-    // --- Стамина: трата и восстановление ---
+    // --- Стамина: трата, восстановление и обновление UI ---
     private void HandleStamina()
     {
         if (IsSprinting)
@@ -288,10 +311,31 @@ public class SimpleKinematicController : MonoBehaviour
         if (IsExhausted && currentStamina >= staminaMinToSprint)
             IsExhausted = false;
 
-        // Защита от дребезга
-        if (currentStamina < maxStamina * sprintMinThreshold)
+        UpdateStaminaUI();
+    }
+
+    // --- Обновление UI стамины ---
+    private void UpdateStaminaUI()
+    {
+        if (staminaSlider != null)
+            staminaSlider.value = StaminaNormalized; // 0..1
+
+        if (staminaText != null)
+            staminaText.text = $"{Mathf.RoundToInt(currentStamina)} / {Mathf.RoundToInt(maxStamina)}";
+
+        // Цвет заливки: от красного (низ) к зелёному (полная)
+        if (staminaFillImage != null)
         {
-            // Даже если IsExhausted ещё не сработал, порог мал — не критично
+            float t = Mathf.InverseLerp(0f, lowStaminaThreshold, StaminaNormalized);
+            staminaFillImage.color = Color.Lerp(staminaLowColor, staminaFullColor, t);
+        }
+
+        // Плавное скрытие/показ
+        if (staminaCanvasGroup != null && hideStaminaWhenFull)
+        {
+            float targetAlpha = StaminaNormalized >= 0.999f ? 0f : 1f;
+            staminaCanvasGroup.alpha = Mathf.MoveTowards(
+                staminaCanvasGroup.alpha, targetAlpha, Time.deltaTime * 3f);
         }
     }
 
